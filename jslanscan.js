@@ -2,16 +2,30 @@
   Minimal thread pool
 */
 function StupidPool (threadCount, waitBetween) {
-  this.threadCount = threadCount
+  this.threadCount = threadCount || 10
   this.waitBetween = waitBetween || 500
   this.pool = []
   this.next = 0
+  this.events = {
+    done: {
+      emitted: false,
+      handler: null
+    }
+  }
+}
+
+StupidPool.prototype.setThreadCount = function (threadCount) {
+  this.threadCount = threadCount
 }
 
 StupidPool.prototype.push = function (fn) {
   this.pool.push(function (callback) {
     fn(callback)
   })
+}
+
+StupidPool.prototype.clear = function () {
+  this.pool = []
 }
 
 StupidPool.prototype.runNext = function () {
@@ -21,13 +35,24 @@ StupidPool.prototype.runNext = function () {
         this.runNext()
       }, this.waitBetween)
     })
+  } else {
+    if (!this.events.done.emitted && this.events.done.handler !== null) {
+      this.events.done.handler.call(this)
+    }
+    this.events.done.emitted = true
   }
 }
 
 StupidPool.prototype.run = function () {
+  this.next = 0
+  this.events.done.emitted = false
   for (let i = 0; i < this.threadCount; i++) {
     this.runNext()
   }
+}
+
+StupidPool.prototype.done = function (callback) {
+  this.events.done.handler = callback
 }
 
 /*
@@ -42,7 +67,7 @@ StupidPool.prototype.run = function () {
 */
 
 function LanScanner () {
-  this.pool = null
+  this.pool = new StupidPool()
 }
 
 LanScanner.prototype.getLocalIP = function (callback) {
@@ -88,7 +113,8 @@ LanScanner.prototype.connect = function (host, callback, timeout) {
 
 LanScanner.prototype.scan = function (hosts, hostStatusHandler, threadCount) {
   threadCount = threadCount || 10
-  this.pool = new StupidPool(threadCount)
+  this.pool.setThreadCount(threadCount)
+  this.pool.clear()
   hosts.forEach((host) => {
     this.pool.push((notify) => {
       this.connect(host, function (status) {
@@ -102,8 +128,13 @@ LanScanner.prototype.scan = function (hosts, hostStatusHandler, threadCount) {
 
 LanScanner.prototype.scanLan = function (hostStatusHandler, threadCount) {
   threadCount = threadCount || 10
+  this.pool.setThreadCount(threadCount)
   this.getLocalIP((ip) => {
     let hosts = this.getSubnetFromIP(ip)
     this.scan(hosts, hostStatusHandler, threadCount)
   })
+}
+
+LanScanner.prototype.done = function (callback) {
+  this.pool.done(callback)
 }

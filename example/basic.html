@@ -16,9 +16,15 @@
 
   <script src="../jslanscan.js"></script>
   <script>
+
     let scanner = new LanScanner()
     let ipContainer = document.querySelector('div')
     let resultsContainer = document.querySelector('pre')
+
+    scanner.done(function () {
+      window.alert('Scan completed.')
+    })
+
     document.querySelector('button').onclick = function () {
       scanner.scanLan(function (host, status) {
         if (status) {
@@ -26,11 +32,13 @@
         }
       })
     }
+
     scanner.getLocalIP(function (ip) {
       let node = document.createElement('div')
       node.innerText = ip
       ipContainer.appendChild(node)
     })
+
   </script>
 </body>
 </html>
