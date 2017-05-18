@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head></head>
+<body>
+
+  <h1>Basic jslanscan demo</h1>
+
+  <h4>Local IPs:</h4>
+  <div></div>
+
+  <h4>Hosts:</h4>
+  <pre></pre>
+
+  <button>Scan my LAN</button>
+
+
+  <script src="../jslanscan.js"></script>
+  <script>
+    let scanner = new LanScanner()
+    let ipContainer = document.querySelector('div')
+    let resultsContainer = document.querySelector('pre')
+    document.querySelector('button').onclick = function () {
+      scanner.scanLan(function (host, status) {
+        if (status) {
+          resultsContainer.appendChild(document.createTextNode(host + '\n'))
+        }
+      })
+    }
+    scanner.getLocalIP(function (ip) {
+      let node = document.createElement('div')
+      node.innerText = ip
+      ipContainer.appendChild(node)
+    })
+  </script>
+</body>
+</html>
