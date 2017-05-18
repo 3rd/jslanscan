@@ -13,7 +13,8 @@ function StupidPool (threadCount, waitBetween) {
       handler: null
     },
     progress: {
-      handler: null
+      handler: null,
+      last: -1
     }
   }
 }
@@ -50,6 +51,7 @@ StupidPool.prototype.run = function () {
   this.next = 0
   this.resolved = 0
   this.events.done.emitted = false
+  this.events.progress.last = -1
   for (let i = 0; i < this.threadCount; i++) {
     this.runNext()
   }
@@ -66,7 +68,10 @@ StupidPool.prototype.emitProgress = function () {
   if (this.events.progress.handler !== null) {
     let total = this.pool.length
     let percentage = Math.floor(this.resolved * 100 / total)
-    this.events.progress.call(this, percentage)
+    if (percentage > this.events.progress.last) {
+      this.events.progress.last = percentage
+      this.events.progress.handler.call(this, percentage)
+    }
   }
 }
 
