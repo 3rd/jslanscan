@@ -107,7 +107,7 @@ LanScanner.prototype.connect = function (host, callback, timeout) {
     http = null
     callback(false)
   }
-  http.open('GET', 'http://' + host + '/' + Math.random().toString(36), true)
+  http.open('GET', window.location.protocol + '//' + host + '/' + Math.random().toString(36), true)
   http.send()
 }
 
