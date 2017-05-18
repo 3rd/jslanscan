@@ -6,7 +6,10 @@
   <h1>Basic jslanscan demo</h1>
 
   <h4>Local IPs:</h4>
-  <div></div>
+  <div class="local"></div>
+
+  <h4>Progress:</h4>
+  <div class="progress"><span>0</span>%</div>
 
   <h4>Hosts:</h4>
   <pre></pre>
@@ -18,11 +21,16 @@
   <script>
 
     let scanner = new LanScanner()
-    let ipContainer = document.querySelector('div')
+    let ipContainer = document.querySelector('.local')
     let resultsContainer = document.querySelector('pre')
+    let progressContainer = document.querySelector('.progress span')
 
     scanner.done(function () {
       window.alert('Scan completed.')
+    })
+
+    scanner.progress(function (percentage) {
+      progressContainer.innerText = percentage
     })
 
     document.querySelector('button').onclick = function () {

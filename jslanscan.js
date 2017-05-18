@@ -124,7 +124,7 @@ LanScanner.prototype.getSubnetFromIP = function (ip) {
 }
 
 LanScanner.prototype.connect = function (host, callback, timeout) {
-  timeout = timeout || 1000
+  timeout = timeout || 500
   let http = new XMLHttpRequest()
   http.timeout = timeout
   http.onerror = http.onload = function (e) {
