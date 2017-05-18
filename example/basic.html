@@ -27,9 +27,11 @@
 
     document.querySelector('button').onclick = function () {
       scanner.scanLan(function (host, status) {
+        let text = 'dead'
         if (status) {
-          resultsContainer.appendChild(document.createTextNode(host + '\n'))
+          text= '<< ALIVE >>'
         }
+        resultsContainer.appendChild(document.createTextNode(host + ' - ' + text + '\n'))
       })
     }
 
