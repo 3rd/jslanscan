@@ -6,9 +6,13 @@ function StupidPool (threadCount, waitBetween) {
   this.waitBetween = waitBetween || 500
   this.pool = []
   this.next = 0
+  this.resolved = 0
   this.events = {
     done: {
       emitted: false,
+      handler: null
+    },
+    progress: {
       handler: null
     }
   }
@@ -31,28 +35,47 @@ StupidPool.prototype.clear = function () {
 StupidPool.prototype.runNext = function () {
   if (this.next < this.pool.length) {
     this.pool[this.next++].call(null, () => {
+      this.resolved++
+      this.emitProgress()
       setTimeout(() => {
         this.runNext()
       }, this.waitBetween)
     })
   } else {
-    if (!this.events.done.emitted && this.events.done.handler !== null) {
-      this.events.done.handler.call(this)
-    }
-    this.events.done.emitted = true
+    this.emitDone()
   }
 }
 
 StupidPool.prototype.run = function () {
   this.next = 0
+  this.resolved = 0
   this.events.done.emitted = false
   for (let i = 0; i < this.threadCount; i++) {
     this.runNext()
   }
 }
 
+StupidPool.prototype.emitDone = function () {
+  if (!this.events.done.emitted && this.events.done.handler !== null) {
+    this.events.done.handler.call(this)
+  }
+  this.events.done.emitted = true
+}
+
+StupidPool.prototype.emitProgress = function () {
+  if (this.events.progress.handler !== null) {
+    let total = this.pool.length
+    let percentage = Math.floor(this.resolved * 100 / total)
+    this.events.progress.call(this, percentage)
+  }
+}
+
 StupidPool.prototype.done = function (callback) {
   this.events.done.handler = callback
+}
+
+StupidPool.prototype.progress = function (callback) {
+  this.events.progress.handler = callback
 }
 
 /*
@@ -107,7 +130,7 @@ LanScanner.prototype.connect = function (host, callback, timeout) {
     http = null
     callback(false)
   }
-  http.open('GET', window.location.protocol + '//' + host + '/' + Math.random().toString(36), true)
+  http.open('GET', (window.location.protocol === 'https:' ? 'https:' : 'http:') + '//' + host + '/' + Math.random().toString(36), true)
   http.send()
 }
 
@@ -137,4 +160,8 @@ LanScanner.prototype.scanLan = function (hostStatusHandler, threadCount) {
 
 LanScanner.prototype.done = function (callback) {
   this.pool.done(callback)
+}
+
+LanScanner.prototype.progress = function (callback) {
+  this.pool.progress(callback)
 }
