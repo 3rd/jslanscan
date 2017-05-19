@@ -123,8 +123,9 @@ LanScanner.prototype.getSubnetFromIP = function (ip) {
   return subnet
 }
 
-LanScanner.prototype.connect = function (host, callback, timeout) {
-  timeout = timeout || 500
+LanScanner.prototype.connectXHR = function (host, callback, port, timeout) {
+  timeout = timeout || 10 * 1000
+  port = port || 80
   let http = new XMLHttpRequest()
   http.timeout = timeout
   http.onerror = http.onload = function (e) {
@@ -135,17 +136,68 @@ LanScanner.prototype.connect = function (host, callback, timeout) {
     http = null
     callback(false)
   }
-  http.open('GET', (window.location.protocol === 'https:' ? 'https:' : 'http:') + '//' + host + '/' + Math.random().toString(36), true)
+  let url = (window.location.protocol === 'https:' ? 'https:' : 'http:') + '//' + host + ':' + port + '/' + Math.random().toString(36)
+  http.open('GET', url, true)
   http.send()
 }
 
-LanScanner.prototype.scan = function (hosts, hostStatusHandler, threadCount) {
+LanScanner.prototype.connectWS = function (host, callback, port, timeout) {
+  timeout = timeout || 10 * 1000
+  port = port || 80
+  let socket = new WebSocket('ws://' + host + ':' + port + '/' + Math.random().toString(36))
+  let startTimestamp = + new Date()
+  let processed = false
+  socket.onerror = (e) => {
+    let timeDiff = (+ new Date()) - startTimestamp
+    if (timeDiff < 10) {
+      processed = true
+      socket.close()
+      setTimeout(() => {
+        this.connectWS(host, callback, port, timeout)
+      }, Math.floor(timeout / 2))
+    }
+    if (!processed) {
+      processed = true
+      socket.close()
+      socket = null
+      callback(true)
+    }
+  }
+  socket.onclose = socket.onopen = function (e) {
+    if (!processed) {
+      processed = true
+      socket.close()
+      callback(false)
+    }
+  }
+  setTimeout(function () {
+    if (!processed) {
+      processed = true
+      socket.close()
+      callback(false)
+    }
+  }, timeout)
+}
+
+LanScanner.prototype.scan = function (hosts, hostStatusHandler, threadCount, scanMethod) {
   threadCount = threadCount || 10
+  scanMethod = scanMethod || 'ws'
+  connecter = null
+  switch (scanMethod) {
+    case 'ws':
+      connecter = this.connectWS
+      break
+    case 'xhr':
+      connecter = this.connectXHR
+      break
+    default:
+      throw new Error('Unknown scanning method:', scanMethod)
+  }
   this.pool.setThreadCount(threadCount)
   this.pool.clear()
   hosts.forEach((host) => {
     this.pool.push((notify) => {
-      this.connect(host, function (status) {
+      connecter(host, function (status) {
         hostStatusHandler(host, status)
         notify()
       })
@@ -154,12 +206,13 @@ LanScanner.prototype.scan = function (hosts, hostStatusHandler, threadCount) {
   this.pool.run()
 }
 
-LanScanner.prototype.scanLan = function (hostStatusHandler, threadCount) {
+LanScanner.prototype.scanLan = function (hostStatusHandler, threadCount, scanMethod) {
   threadCount = threadCount || 10
+  scanMethod = scanMethod || 'ws'
   this.pool.setThreadCount(threadCount)
   this.getLocalIP((ip) => {
     let hosts = this.getSubnetFromIP(ip)
-    this.scan(hosts, hostStatusHandler, threadCount)
+    this.scan(hosts, hostStatusHandler, threadCount, scanMethod)
   })
 }
 
